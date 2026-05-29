@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package ocr;
+
+// OCR Service
+service OcrService {
+  // Perform OCR on an image
+  rpc Recognize (OcrRequest) returns (OcrResponse);
+  
+  // Health check
+  rpc Health (HealthRequest) returns (HealthResponse);
+}
+
+// Request message
+message OcrRequest {
+  // Image data (bytes)
+  bytes image = 1;
+}
+
+// Response message
+message OcrResponse {
+  // Detected text items
+  repeated OcrItem items = 1;
+  
+  // Total processing time in milliseconds
+  float processing_time_ms = 2;
+  
+  // Number of items detected
+  int32 count = 3;
+}
+
+// Single OCR result item
+message OcrItem {
+  // Detected text
+  string text = 1;
+  
+  // Bounding box coordinates (relative to original image)
+  int32 x = 2;
+  int32 y = 3;
+  int32 width = 4;
+  int32 height = 5;
+  
+  // Confidence score (0-1)
+  float confidence = 6;
+}
+
+// Health check request
+message HealthRequest {}
+
+// Health check response
+message HealthResponse {
+  bool healthy = 1;
+  string device = 2;  // "gpu" or "cpu"
+  string version = 3;
+}
