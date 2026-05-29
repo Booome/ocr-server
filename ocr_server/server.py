@@ -162,17 +162,18 @@ class OcrServicer(ocr_pb2_grpc.OcrServiceServicer):
         )
 
 
-def serve(port: int = 50051, max_workers: int = 1, async_init: bool = True):
+def serve(host: str = "0.0.0.0", port: int = 50051, max_workers: int = 1, async_init: bool = True):
     """Start the gRPC server.
-    
+
     Args:
+        host: Server bind address
         port: Server port
         max_workers: Number of worker threads
         async_init: Initialize OCR engine in background (server starts immediately)
     """
     # Initialize servicer
     servicer = OcrServicer(init_async=async_init)
-    
+
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=max_workers),
         options=[
@@ -181,24 +182,25 @@ def serve(port: int = 50051, max_workers: int = 1, async_init: bool = True):
         ],
     )
     ocr_pb2_grpc.add_OcrServiceServicer_to_server(servicer, server)
-    server.add_insecure_port(f"[::]:{port}")
+    server.add_insecure_port(f"{host}:{port}")
     server.start()
-    print(f"OCR gRPC server started on port {port}")
-    
+    print(f"OCR gRPC server started on {host}:{port}")
+
     if async_init:
         print("OCR engine is initializing in background...")
-    
+
     server.wait_for_termination()
 
 
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="OCR gRPC Server")
+    parser.add_argument("--host", type=str, default="0.0.0.0", help="Server bind address")
     parser.add_argument("--port", type=int, default=int(os.environ.get("OCR_PORT", "50051")), help="Server port")
     parser.add_argument("--workers", type=int, default=1, help="Number of worker threads")
     parser.add_argument("--sync", action="store_true", help="Initialize engine before accepting connections")
     args = parser.parse_args()
-    serve(port=args.port, max_workers=args.workers, async_init=not args.sync)
+    serve(host=args.host, port=args.port, max_workers=args.workers, async_init=not args.sync)
 
 
 if __name__ == "__main__":

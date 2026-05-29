@@ -5,7 +5,7 @@
 ### 1. Install
 
 ```bash
-cd ocr_server
+cd ocr-server
 pip install -e .
 ```
 

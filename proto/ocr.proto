@@ -15,6 +15,17 @@ service OcrService {
 message OcrRequest {
   // Image data (bytes)
   bytes image = 1;
+  
+  // Optional ROI (region of interest) for cropping
+  optional Roi roi = 2;
+}
+
+// Region of interest (normalized coordinates 0-1)
+message Roi {
+  float left = 1;
+  float top = 2;
+  float right = 3;
+  float bottom = 4;
 }
 
 // Response message

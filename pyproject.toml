@@ -19,6 +19,7 @@ dependencies = [
     "protobuf>=4.21.0",
     "paddleocr>=2.11.0",
     "paddlepaddle-gpu>=2.5.0; sys_platform == 'win32'",
+    "paddlepaddle-gpu>=2.5.0; sys_platform == 'linux'",
     "opencv-python>=4.8.0",
     "numpy>=1.24.0",
 ]

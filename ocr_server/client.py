@@ -75,7 +75,8 @@ class OcrClient:
         """
         if self._stub is None:
             self.connect()
-        assert self._stub is not None
+        if self._stub is None:
+            raise RuntimeError("Not connected to OCR server")
 
         # Crop image locally if ROI specified (reduces transfer size)
         ox, oy = 0, 0
@@ -127,8 +128,9 @@ class OcrClient:
         """
         if self._stub is None:
             self.connect()
-        assert self._stub is not None
-        
+        if self._stub is None:
+            raise RuntimeError("Not connected to OCR server")
+
         try:
             response = self._stub.Health(ocr_pb2.HealthRequest(), timeout=5.0)
             return {

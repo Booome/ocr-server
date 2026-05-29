@@ -3,10 +3,7 @@
 import grpc
 import warnings
 
-try:
-    from . import ocr_pb2 as ocr__pb2
-except ImportError:
-    import ocr_pb2 as ocr__pb2
+import ocr_pb2 as ocr__pb2
 
 GRPC_GENERATED_VERSION = '1.80.0'
 GRPC_VERSION = grpc.__version__
@@ -20,10 +17,11 @@ except ImportError:
 
 if _version_not_supported:
     raise RuntimeError(
-        f'The grpc package installed is at version {GRPC_VERSION}, '
-        f'but the generated code in ocr_pb2_grpc.py depends on '
-        f'grpc version {GRPC_GENERATED_VERSION}. '
-        f'Please upgrade your grpc package to at least version {GRPC_GENERATED_VERSION}.'
+        f'The grpc package installed is at version {GRPC_VERSION},'
+        + ' but the generated code in ocr_pb2_grpc.py depends on'
+        + f' grpcio>={GRPC_GENERATED_VERSION}.'
+        + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
+        + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
     )
 
 
@@ -41,12 +39,12 @@ class OcrServiceStub(object):
                 '/ocr.OcrService/Recognize',
                 request_serializer=ocr__pb2.OcrRequest.SerializeToString,
                 response_deserializer=ocr__pb2.OcrResponse.FromString,
-                )
+                _registered_method=True)
         self.Health = channel.unary_unary(
                 '/ocr.OcrService/Health',
                 request_serializer=ocr__pb2.HealthRequest.SerializeToString,
                 response_deserializer=ocr__pb2.HealthResponse.FromString,
-                )
+                _registered_method=True)
 
 
 class OcrServiceServicer(object):
@@ -84,6 +82,7 @@ def add_OcrServiceServicer_to_server(servicer, server):
     generic_handler = grpc.method_handlers_generic_handler(
             'ocr.OcrService', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('ocr.OcrService', rpc_method_handlers)
 
 
  # This class is part of an EXPERIMENTAL API.
@@ -116,7 +115,7 @@ class OcrService(object):
             wait_for_ready,
             timeout,
             metadata,
-        )
+            _registered_method=True)
 
     @staticmethod
     def Health(request,
@@ -143,4 +142,4 @@ class OcrService(object):
             wait_for_ready,
             timeout,
             metadata,
-        )
+            _registered_method=True)
