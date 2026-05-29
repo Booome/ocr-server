@@ -12,18 +12,15 @@ pip install -e .
 ### 2. Start Server
 
 ```bash
-# Option 1: From ocr_server directory
+# Option 1: After install (recommended)
+ocr-server --port 50051
+
+# Option 2: From ocr_server directory
 cd ocr_server
 python -m ocr_server.server --port 50051
 
-# Option 2: After install (from anywhere)
-ocr-server --port 50051
-
-# Option 3: From hlddz main (auto-start)
-python -m hlddz.main --ocr-server --ocr-port 50051
-
-# Option 4: Sync mode (wait for engine init before accepting connections)
-python -m ocr_server.server --sync
+# Option 3: Sync mode (wait for engine init before accepting connections)
+ocr-server --sync
 ```
 
 ### 3. Environment Variables
@@ -63,7 +60,7 @@ with OcrClient(host="localhost", port=50051) as client:
 ```
 ┌─────────────┐      gRPC       ┌──────────────┐
 │   Client    │  ─────────────> │    Server    │
-│  (hlddz)    │   protobuf      │  (PaddleOCR) │
+│   (any)     │   protobuf      │  (PaddleOCR) │
 └─────────────┘                 └──────────────┘
 ```
 
