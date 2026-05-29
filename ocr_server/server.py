@@ -195,6 +195,7 @@ def serve(host: str = "0.0.0.0", port: int = 50051, max_workers: int = 1, async_
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="OCR gRPC Server")
+    parser.add_argument("--version", action="version", version="%(prog)s 1.0.0")
     parser.add_argument("--host", type=str, default="0.0.0.0", help="Server bind address")
     parser.add_argument("--port", type=int, default=int(os.environ.get("OCR_PORT", "50051")), help="Server port")
     parser.add_argument("--workers", type=int, default=1, help="Number of worker threads")
