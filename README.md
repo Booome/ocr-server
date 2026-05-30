@@ -4,14 +4,11 @@
 
 ### 1. Install
 
-Requires [uv](https://docs.astral.sh/uv/) as package manager.
-
 ```bash
 cd ocr-server
-uv pip install -e .
+pip install -e .
+pip install paddlepaddle-gpu==3.3.1 -i https://www.paddlepaddle.org.cn/packages/stable/cu129/
 ```
-
-> `paddlepaddle-gpu` is installed from PaddlePaddle's private index, configured in `pyproject.toml` via `[[tool.uv.index]]`.
 
 ### 2. Start Server
 
