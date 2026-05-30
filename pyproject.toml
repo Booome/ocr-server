@@ -18,8 +18,7 @@ dependencies = [
     "grpcio-tools>=1.50.0",
     "protobuf>=4.21.0",
     "paddleocr>=2.11.0",
-    "paddlepaddle-gpu>=2.5.0; sys_platform == 'win32'",
-    "paddlepaddle-gpu>=2.5.0; sys_platform == 'linux'",
+    "paddlepaddle-gpu==3.3.1",
     "opencv-python>=4.8.0",
     "numpy>=1.24.0",
 ]
@@ -34,6 +33,14 @@ dev = [
 
 [project.scripts]
 ocr-server = "ocr_server.server:main"
+
+[tool.uv]
+index-strategy = "unsafe-best-match"
+
+[[tool.uv.index]]
+url = "https://www.paddlepaddle.org.cn/packages/stable/cu129/"
+name = "paddlepaddle"
+packages = ["paddlepaddle-gpu"]
 
 [tool.setuptools]
 packages = ["ocr_server"]

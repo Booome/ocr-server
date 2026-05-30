@@ -4,10 +4,14 @@
 
 ### 1. Install
 
+Requires [uv](https://docs.astral.sh/uv/) as package manager.
+
 ```bash
 cd ocr-server
-pip install -e .
+uv pip install -e .
 ```
+
+> `paddlepaddle-gpu` is installed from PaddlePaddle's private index, configured in `pyproject.toml` via `[[tool.uv.index]]`.
 
 ### 2. Start Server
 
@@ -37,7 +41,7 @@ ocr-server --sync
 - During initialization, `Health` returns `healthy=False, device=initializing`
 - `Recognize` returns `UNAVAILABLE` if engine is not ready
 
-### 4. Test Client
+### 5. Test Client
 
 ```python
 from ocr_server.client import OcrClient
