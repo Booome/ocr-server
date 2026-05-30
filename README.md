@@ -6,8 +6,13 @@
 
 ```bash
 cd ocr-server
+
+# Server (full)
 pip install -e .
 pip install paddlepaddle-gpu==3.3.1 -i https://www.paddlepaddle.org.cn/packages/stable/cu129/
+
+# Client only (for other projects to depend on)
+pip install -e ".[client]"
 ```
 
 ### 2. Start Server

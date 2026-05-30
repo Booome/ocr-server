@@ -23,6 +23,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+client = [
+    "grpcio>=1.50.0",
+    "grpcio-tools>=1.50.0",
+    "protobuf>=4.21.0",
+    "opencv-python>=4.8.0",
+    "numpy>=1.24.0",
+]
 dev = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
