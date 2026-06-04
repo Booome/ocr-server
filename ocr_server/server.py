@@ -39,6 +39,64 @@ except ImportError:
     import ocr_pb2_grpc
 
 
+def _merge_adjacent_items(items: list, gap_ratio: float = 0.3, height_ratio: float = 0.5) -> list:
+    """Merge text items that are on the same line and close together.
+    
+    Args:
+        items: List of dicts with keys: text, x, y, width, height, confidence
+        gap_ratio: Max gap as ratio of average height to merge
+        height_ratio: Max height difference as ratio to consider same line
+    
+    Returns:
+        Merged list of items
+    """
+    if len(items) <= 1:
+        return items
+    
+    # Sort by x coordinate
+    sorted_items = sorted(items, key=lambda it: it["x"])
+    merged = []
+    i = 0
+    
+    while i < len(sorted_items):
+        current = dict(sorted_items[i])
+        j = i + 1
+        
+        while j < len(sorted_items):
+            next_item = sorted_items[j]
+            avg_height = (current["height"] + next_item["height"]) / 2
+            height_diff = abs(current["height"] - next_item["height"])
+            
+            # Check if same line: similar height and y-position
+            same_line = (
+                height_diff < avg_height * height_ratio and
+                abs(current["y"] - next_item["y"]) < avg_height * height_ratio
+            )
+            
+            # Check if close horizontally
+            current_right = current["x"] + current["width"]
+            gap = next_item["x"] - current_right
+            close_enough = gap < avg_height * gap_ratio
+            
+            if same_line and close_enough:
+                # Merge: extend current box, concatenate text
+                new_right = max(current_right, next_item["x"] + next_item["width"])
+                new_bottom = max(current["y"] + current["height"], next_item["y"] + next_item["height"])
+                current["y"] = min(current["y"], next_item["y"])
+                current["width"] = new_right - current["x"]
+                current["height"] = new_bottom - current["y"]
+                current["text"] = current["text"] + next_item["text"]
+                current["confidence"] = min(current["confidence"], next_item["confidence"])
+                j += 1
+            else:
+                break
+        
+        merged.append(current)
+        i = j
+    
+    return merged
+
+
 class OcrServicer(ocr_pb2_grpc.OcrServiceServicer):
     """OCR Service implementation."""
 
@@ -80,10 +138,11 @@ class OcrServicer(ocr_pb2_grpc.OcrServiceServicer):
                 use_textline_orientation=False,
                 text_detection_model_name=det_model,
                 text_recognition_model_name=rec_model,
-                text_det_limit_side_len=640,
+                text_det_limit_side_len=960,
                 text_det_limit_type="max",
-                text_det_thresh=0.15,
-                text_det_box_thresh=0.3,
+                text_det_thresh=0.1,
+                text_det_box_thresh=0.2,
+                text_det_unclip_ratio=2.0,
                 device=self._device,
             )
             self._ready = True
@@ -121,8 +180,8 @@ class OcrServicer(ocr_pb2_grpc.OcrServiceServicer):
         engine = self._get_engine()
         result = engine.predict(img)
         
-        # Parse results
-        items: list[ocr_pb2.OcrItem] = []
+        # Parse results into dict format for merging
+        raw_items: list[dict] = []
         for page in result:
             if not hasattr(page, "get"):
                 continue
@@ -135,13 +194,27 @@ class OcrServicer(ocr_pb2_grpc.OcrServiceServicer):
                     if isinstance(box, np.ndarray):
                         if box.ndim == 1 and len(box) == 4:
                             x1, y1, x2, y2 = int(box[0]), int(box[1]), int(box[2]), int(box[3])
-                            items.append(ocr_pb2.OcrItem(
-                                text=text,
-                                x=x1, y=y1,
-                                width=x2 - x1,
-                                height=y2 - y1,
-                                confidence=float(score),
-                            ))
+                            raw_items.append({
+                                "text": text,
+                                "x": x1, "y": y1,
+                                "width": x2 - x1,
+                                "height": y2 - y1,
+                                "confidence": float(score),
+                            })
+        
+        # Merge adjacent text blocks on the same line
+        merged_items = _merge_adjacent_items(raw_items)
+        
+        # Convert to protobuf
+        items = [
+            ocr_pb2.OcrItem(
+                text=it["text"],
+                x=it["x"], y=it["y"],
+                width=it["width"], height=it["height"],
+                confidence=it["confidence"],
+            )
+            for it in merged_items
+        ]
         
         elapsed = (time.perf_counter() - start_time) * 1000
         return ocr_pb2.OcrResponse(items=items, count=len(items), processing_time_ms=elapsed)
