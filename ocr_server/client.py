@@ -1,21 +1,34 @@
-"""OCR gRPC Client for hlddz integration."""
+"""OCR gRPC Client."""
 
-import io
+import logging
+from types import TracebackType
 from typing import Optional
 
 import cv2
+import grpc
 import numpy as np
 
-import grpc
+from .constants import DEFAULT_JPEG_QUALITY, DEFAULT_TIMEOUT, MAX_MESSAGE_SIZE
 
-from . import ocr_pb2
-from . import ocr_pb2_grpc
+try:
+    from . import ocr_pb2
+    from . import ocr_pb2_grpc
+except ImportError:
+    import ocr_pb2
+    import ocr_pb2_grpc
+
+logger = logging.getLogger(__name__)
 
 
 class OcrClient:
     """gRPC client for OCR service."""
 
-    def __init__(self, host: str = "localhost", port: int = 50051, timeout: float = 10.0):
+    def __init__(
+        self,
+        host: str = "localhost",
+        port: int = 50051,
+        timeout: float = DEFAULT_TIMEOUT,
+    ) -> None:
         """Initialize OCR client.
 
         Args:
@@ -33,16 +46,17 @@ class OcrClient:
         """Connect to OCR server."""
         if self._channel is not None:
             return
-        
+
         target = f"{self._host}:{self._port}"
         self._channel = grpc.insecure_channel(
             target,
             options=[
-                ("grpc.max_send_message_length", 50 * 1024 * 1024),
-                ("grpc.max_receive_message_length", 50 * 1024 * 1024),
+                ("grpc.max_send_message_length", MAX_MESSAGE_SIZE),
+                ("grpc.max_receive_message_length", MAX_MESSAGE_SIZE),
             ],
         )
         self._stub = ocr_pb2_grpc.OcrServiceStub(self._channel)
+        logger.info("Connected to OCR server at %s", target)
 
     def close(self) -> None:
         """Close connection."""
@@ -50,12 +64,18 @@ class OcrClient:
             self._channel.close()
             self._channel = None
             self._stub = None
+            logger.info("Disconnected from OCR server")
 
-    def __enter__(self):
+    def __enter__(self) -> "OcrClient":
         self.connect()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> bool:
         self.close()
         return False
 
@@ -63,7 +83,7 @@ class OcrClient:
         self,
         image_bgr: np.ndarray,
         roi: Optional[tuple[float, float, float, float]] = None,
-    ) -> list[dict]:
+    ) -> list[dict[str, object]]:
         """Recognize text in an image.
 
         Args:
@@ -72,13 +92,16 @@ class OcrClient:
 
         Returns:
             List of dicts with keys: text, x, y, width, height, confidence
+
+        Raises:
+            RuntimeError: If not connected to server
+            grpc.RpcError: If gRPC call fails
         """
         if self._stub is None:
             self.connect()
         if self._stub is None:
             raise RuntimeError("Not connected to OCR server")
 
-        # Crop image locally if ROI specified (reduces transfer size)
         ox, oy = 0, 0
         if roi is not None:
             h, w = image_bgr.shape[:2]
@@ -91,24 +114,16 @@ class OcrClient:
                 image_bgr = image_bgr[y1:y2, x1:x2]
                 ox, oy = x1, y1
 
-        # Encode image to JPEG (faster than PNG, ~75% faster transfer)
-        success, encoded = cv2.imencode(".jpg", image_bgr, [cv2.IMWRITE_JPEG_QUALITY, 85])
-        if not success:
-            return []
+        success, encoded = cv2.imencode(".jpg", image_bgr, [cv2.IMWRITE_JPEG_QUALITY, DEFAULT_JPEG_QUALITY])
+        if not success or encoded is None:
+            raise ValueError("Failed to encode image to JPEG")
         image_bytes = encoded.tobytes()
 
-        # Build request (no ROI needed, already cropped)
         request = ocr_pb2.OcrRequest(image=image_bytes)
 
-        # Call gRPC
-        try:
-            response = self._stub.Recognize(request, timeout=self._timeout)
-        except grpc.RpcError as e:
-            print(f"gRPC error: {e}")
-            return []
+        response = self._stub.Recognize(request, timeout=self._timeout)
 
-        # Parse response (adjust coordinates back to original image)
-        results = []
+        results: list[dict[str, object]] = []
         for item in response.items:
             results.append({
                 "text": item.text,
@@ -120,23 +135,24 @@ class OcrClient:
             })
         return results
 
-    def health_check(self) -> dict:
+    def health_check(self) -> dict[str, object]:
         """Check server health.
-        
+
         Returns:
             Dict with keys: healthy, device, version
+
+        Raises:
+            RuntimeError: If not connected to server
+            grpc.RpcError: If gRPC call fails
         """
         if self._stub is None:
             self.connect()
         if self._stub is None:
             raise RuntimeError("Not connected to OCR server")
 
-        try:
-            response = self._stub.Health(ocr_pb2.HealthRequest(), timeout=5.0)
-            return {
-                "healthy": response.healthy,
-                "device": response.device,
-                "version": response.version,
-            }
-        except grpc.RpcError as e:
-            return {"healthy": False, "device": "unknown", "version": "unknown", "error": str(e)}
+        response = self._stub.Health(ocr_pb2.HealthRequest(), timeout=5.0)
+        return {
+            "healthy": response.healthy,
+            "device": response.device,
+            "version": response.version,
+        }

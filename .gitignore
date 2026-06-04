@@ -48,3 +48,7 @@ venv.bak/
 *.swp
 *.swo
 *~
+
+# Generated protobuf files
+ocr_server/ocr_pb2.py
+ocr_server/ocr_pb2_grpc.py
